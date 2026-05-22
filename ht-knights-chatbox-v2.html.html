@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Holy Trinity Knights - Chat Support</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C97A;
+    --gold-dark: #9A7A2E;
+    --navy: #1A2744;
+    --navy-deep: #0E1828;
+    --navy-mid: #243058;
+    --white: #F9F6EF;
+    --gray-light: #EDE8DC;
+    --gray-mid: #B8B0A0;
+    --red: #8B1A1A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--navy-deep);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Launcher Button ── */
+  #chat-launcher {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold), var(--gold-light));
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 24px rgba(201,168,76,0.45), 0 2px 8px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  #chat-launcher:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 32px rgba(201,168,76,0.6), 0 2px 8px rgba(0,0,0,0.4);
+  }
+  #chat-launcher svg { width: 28px; height: 28px; }
+  #chat-launcher .icon-chat { display: block; }
+  #chat-launcher .icon-close { display: none; }
+  #chat-launcher.open .icon-chat { display: none; }
+  #chat-launcher.open .icon-close { display: block; }
+
+  /* ── Chat Window ── */
+  #chat-window {
+    position: fixed;
+    bottom: 104px;
+    right: 28px;
+    width: 370px;
+    max-height: 580px;
+    background: var(--navy);
+    border-radius: 16px;
+    border: 1px solid rgba(201,168,76,0.25);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  #chat-window.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: all;
+  }
+
+  /* ── Header ── */
+  .chat-header {
+    background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy-mid) 100%);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header-crest {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    color: var(--navy-deep);
+    font-weight: 600;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(201,168,76,0.3);
+  }
+  .header-text {}
+  .header-title {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+  .header-subtitle {
+    font-size: 11px;
+    color: var(--gray-mid);
+    margin-top: 2px;
+    letter-spacing: 0.02em;
+  }
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 3px;
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    background: #4CAF50;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .status-text { font-size: 10px; color: #4CAF50; letter-spacing: 0.05em; }
+
+  /* ── Messages ── */
+  #chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 280px;
+    max-height: 360px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201,168,76,0.2) transparent;
+  }
+  #chat-messages::-webkit-scrollbar { width: 4px; }
+  #chat-messages::-webkit-scrollbar-track { background: transparent; }
+  #chat-messages::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 4px; }
+
+  .message {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+    animation: fadeUp 0.2s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .message.user { align-self: flex-end; align-items: flex-end; }
+  .message.bot  { align-self: flex-start; align-items: flex-start; }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    font-weight: 300;
+  }
+  .message.user .bubble {
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    color: var(--navy-deep);
+    border-bottom-right-radius: 4px;
+    font-weight: 400;
+  }
+  .message.bot .bubble {
+    background: rgba(255,255,255,0.07);
+    color: var(--white);
+    border-bottom-left-radius: 4px;
+    border: 1px solid rgba(201,168,76,0.12);
+  }
+  .msg-time {
+    font-size: 10px;
+    color: var(--gray-mid);
+    margin-top: 4px;
+    padding: 0 4px;
+  }
+
+  /* Typing indicator */
+  .typing-bubble {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(201,168,76,0.12);
+    border-radius: 14px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    opacity: 0.5;
+    animation: typingBounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* ── Divider ── */
+  .chat-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent);
+    margin: 0 16px;
+  }
+
+  /* ── Input Area ── */
+  .chat-input-area {
+    padding: 14px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--navy-deep);
+  }
+  #chat-input {
+    flex: 1;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--white);
+    font-family: 'Lato', sans-serif;
+    font-size: 13.5px;
+    font-weight: 300;
+    resize: none;
+    outline: none;
+    line-height: 1.4;
+    max-height: 100px;
+    transition: border-color 0.2s;
+  }
+  #chat-input::placeholder { color: var(--gray-mid); }
+  #chat-input:focus { border-color: rgba(201,168,76,0.5); }
+
+  #send-btn {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  #send-btn:hover { transform: scale(1.05); }
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  #send-btn svg { width: 18px; height: 18px; }
+
+  /* ── Footer ── */
+  .chat-footer {
+    padding: 8px 16px 12px;
+    text-align: center;
+    font-size: 10px;
+    color: rgba(184,176,160,0.5);
+    letter-spacing: 0.04em;
+    background: var(--navy-deep);
+  }
+  .chat-footer a { color: var(--gold-dark); text-decoration: none; }
+
+  /* ── Quick replies ── */
+  .quick-replies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .quick-reply-btn {
+    background: transparent;
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--gold-light);
+    font-family: 'Lato', sans-serif;
+    font-size: 11.5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .quick-reply-btn:hover {
+    background: rgba(201,168,76,0.12);
+    border-color: var(--gold);
+  }
+
+  @media (max-width: 420px) {
+    #chat-window { width: calc(100vw - 24px); right: 12px; bottom: 90px; }
+    #chat-launcher { right: 16px; bottom: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Launcher -->
+<button id="chat-launcher" onclick="toggleChat()" aria-label="Open chat">
+  <svg class="icon-chat" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+  <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+</button>
+
+<!-- Chat Window -->
+<div id="chat-window" role="dialog" aria-label="Holy Trinity Knights Chat">
+
+  <div class="chat-header">
+    <div class="header-crest">✠</div>
+    <div class="header-text">
+      <div class="header-title">Holy Trinity Knights</div>
+      <div class="header-subtitle">Council 6673 · Lenexa, KS</div>
+      <div class="header-status">
+        <div class="status-dot"></div>
+        <span class="status-text">Online</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat-messages">
+    <!-- Welcome message -->
+    <div class="message bot">
+      <div class="bubble">
+        Vivat Jesus! 👋 Welcome to Holy Trinity Knights, Council 6673. I'm here to help with questions about membership, meetings, or anything about our council. How can I assist you today?
+      </div>
+      <div class="msg-time">Just now</div>
+      <div class="quick-replies">
+        <button class="quick-reply-btn" onclick="sendQuick('When are meetings?')">📅 Meetings</button>
+        <button class="quick-reply-btn" onclick="sendQuick('How do I become a Knight?')">⚔️ Join Us</button>
+        <button class="quick-reply-btn" onclick="sendQuick('Who do I contact?')">📞 Contact</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-divider"></div>
+
+  <div class="chat-input-area">
+    <textarea id="chat-input" placeholder="Type your message..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button id="send-btn" onclick="sendMessage()" aria-label="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="chat-footer">
+    Holy Trinity Catholic Church · Lenexa, KS &nbsp;·&nbsp;
+    <a href="mailto:kofccouncil6673@gmail.com">kofccouncil6673@gmail.com</a>
+  </div>
+</div>
+
+<script>
+  const WEBHOOK_URL = 'https://gjlopez524.app.n8n.cloud/webhook/support-chat';
+  const messagesEl = document.getElementById('chat-messages');
+  const inputEl    = document.getElementById('chat-input');
+  const sendBtn    = document.getElementById('send-btn');
+  const launcher   = document.getElementById('chat-launcher');
+  const chatWindow = document.getElementById('chat-window');
+
+  let history = [];
+  let isOpen  = false;
+
+  function toggleChat() {
+    isOpen = !isOpen;
+    chatWindow.classList.toggle('open', isOpen);
+    launcher.classList.toggle('open', isOpen);
+    if (isOpen) setTimeout(() => inputEl.focus(), 250);
+  }
+
+  function getTime() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function appendMessage(role, text) {
+    // Remove quick replies from previous bot message
+    document.querySelectorAll('.quick-replies').forEach(el => el.remove());
+
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.innerHTML = `<div class="bubble">${text}</div><div class="msg-time">${getTime()}</div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function showTyping() {
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.id = 'typing-indicator';
+    div.innerHTML = `<div class="typing-bubble">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+  }
+
+  async function sendMessage(text) {
+    const msg = (text || inputEl.value).trim();
+    if (!msg) return;
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    appendMessage('user', msg);
+    history.push({ role: 'user', content: msg });
+    showTyping();
+
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: msg,
+          history: history.slice(-10),
+          sessionId: getSessionId(),
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+      const reply = data.reply || 'Sorry, I could not get a response. Please try again.';
+
+      removeTyping();
+      appendMessage('bot', reply);
+      history.push({ role: 'assistant', content: reply });
+
+    } catch (err) {
+      removeTyping();
+      appendMessage('bot', '⚠️ Could not reach the support server. Please try again in a moment or contact us at <a href="mailto:kofccouncil6673@gmail.com" style="color:var(--gold-light)">kofccouncil6673@gmail.com</a>');
+      console.error(err);
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+
+  function sendQuick(text) {
+    sendMessage(text);
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+  }
+
+  function getSessionId() {
+    let sid = sessionStorage.getItem('ht_knights_sid');
+    if (!sid) {
+      sid = 'session_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('ht_knights_sid', sid);
+    }
+    return sid;
+  }
+</script>
+</body>
+</html>
